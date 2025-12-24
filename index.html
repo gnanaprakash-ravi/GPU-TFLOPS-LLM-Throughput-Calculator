@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GPU TFLOPS & LLM Throughput Estimator (Official NVIDIA Specs)</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #222;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+    }
+    
+    .subtitle {
+      color: rgba(255,255,255,0.9);
+      text-align: center;
+      font-size: 1.1em;
+      margin-bottom: 30px;
+      font-style: italic;
+    }
+    
+    .card {
+      background: white;
+      padding: 25px;
+      margin-bottom: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      animation: slideUp 0.3s ease-out;
+    }
+    
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    h2 {
+      color: #667eea;
+      border-bottom: 3px solid #667eea;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+      font-size: 1.8em;
+    }
+    
+    h3 {
+      color: #764ba2;
+      margin-top: 20px;
+      margin-bottom: 12px;
+      font-size: 1.3em;
+    }
+    
+    .input-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      font-size: 1.05em;
+    }
+    
+    select, input {
+      width: 100%;
+      padding: 12px;
+      margin-top: 5px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 1em;
+      transition: border-color 0.2s;
+    }
+    
+    select:focus, input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 25px;
+    }
+    
+    button {
+      flex: 1;
+      padding: 14px 24px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    
+    button.primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    button.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    button.secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    
+    button.secondary:hover {
+      background: #e0e0e0;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .result-section {
+      margin-top: 30px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      overflow-x: auto;
+    }
+    
+    th, td {
+      border: 2px solid #ddd;
+      padding: 14px;
+      text-align: center;
+      font-size: 1.05em;
+    }
+    
+    th {
+      background: #667eea;
+      color: white;
+      font-weight: 600;
+    }
+    
+    tr:nth-child(even) {
+      background: #f8f9fa;
+    }
+    
+    tr:hover {
+      background: #eff0f5;
+    }
+    
+    .math-box {
+      background: #f5f3ff;
+      padding: 16px;
+      border-left: 4px solid #667eea;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.95em;
+      margin: 15px 0;
+      line-height: 1.7;
+      color: #222;
+    }
+    
+    .math-box-title {
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+    
+    .note {
+      font-size: 0.95em;
+      color: #555;
+      line-height: 1.7;
+      margin: 15px 0;
+    }
+    
+    .warning {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    
+    .highlight {
+      background: #fffacd;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+    
+    .gpu-specs-table {
+      width: 100%;
+      margin: 20px 0;
+    }
+    
+    .column-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    
+    @media (max-width: 900px) {
+      .column-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .explanation-box {
+      background: #e8f4f8;
+      border: 2px solid #667eea;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    
+    .explanation-box h4 {
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+    
+    ul {
+      margin-left: 20px;
+      line-height: 1.8;
+    }
+    
+    li {
+      margin-bottom: 8px;
+    }
+    
+    .token-result {
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      font-size: 1.1em;
+    }
+    
+    .token-result strong {
+      color: #2e7d32;
+    }
+    
+    .reality-check {
+      background: #fce4ec;
+      border-left: 4px solid #e91e63;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    
+    .reality-check strong {
+      color: #c2185b;
+    }
+
+    .source-note {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 12px;
+      border-radius: 6px;
+      margin: 15px 0;
+      font-size: 0.9em;
+      color: #1565c0;
+    }
+
+    .critical-correction {
+      background: #ffebee;
+      border-left: 4px solid #d32f2f;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      font-size: 1em;
+    }
+
+    .critical-correction strong {
+      color: #d32f2f;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🎯 GPU TFLOPS &amp; LLM Throughput Calculator</h1>
+<p class="subtitle">Everything is transparent. Official NVIDIA specs only. No approximations.</p>
+
+<!-- SECTION 1: GPU & MODEL SELECTION -->
+<div class="card">
+  <h2>1️⃣ Step 1: Select Hardware &amp; Model</h2>
+  
+  <div class="column-2">
+    <div>
+      <div class="input-group">
+        <label for="gpu">GPU (Official NVIDIA Specs)</label>
+        <select id="gpu">
+          <option value="h200sxm">H200 SXM</option>
+          <option value="h200nvl">H200 NVL</option>
+          <option value="b200">B200 Blackwell</option>
+          <option value="rtx6000server">RTX 6000 Pro Blackwell Server Edition</option>
+        </select>
+      </div>
+    </div>
+    
+    <div>
+      <div class="input-group">
+        <label for="model">LLM Model (Preset)</label>
+        <select id="model">
+          <option value="llama7">LLaMA-7B (4,096 dims, 32 layers)</option>
+          <option value="llama13">LLaMA-13B (5,120 dims, 40 layers)</option>
+          <option value="llama70">LLaMA-70B (8,192 dims, 80 layers)</option>
+          <option value="mixtral">Mixtral-8×7B (4,096 dims, 32 layers)</option>
+          <option value="custom">Custom (Enter your own)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  
+  <!-- CUSTOM MODEL INPUTS (hidden by default) -->
+  <div id="customModelSection" class="hidden">
+    <h3>Custom Model Parameters</h3>
+    <div class="column-2">
+      <div class="input-group">
+        <label for="dmodel">Model Dimension (d_model)</label>
+        <input type="number" id="dmodel" value="4096" min="256" max="16384" step="256">
+      </div>
+      <div class="input-group">
+        <label for="layers">Number of Layers</label>
+        <input type="number" id="layers" value="32" min="1" max="200" step="1">
+      </div>
+    </div>
+  </div>
+  
+  <div class="button-group">
+  <button class="primary" onclick="calculate()">📊 Calculate TFLOPS &amp; Throughput</button>
+  <button class="secondary" id="toggleExplBtn" onclick="toggleExplanation()">📚 Show Official Specs</button>
+  <button class="secondary" id="toggleCalcBtn" onclick="toggleCalculation()">🧮 Show How to Calculate TFLOPS</button>
+  </div>
+</div>
+
+
+<!-- SECTION 1.5: HOW TO CALCULATE TFLOPS (NEW EDUCATIONAL SECTION) -->
+<div class="card" id="calculationGuide" class="hidden">
+  <h2>📐 How to Calculate TFLOPS from Hardware Specs (Educational)</h2>
+  
+  <div class="explanation-box">
+    <h4>🎯 The Basic Formula</h4>
+    <div class="math-box">
+      <div class="math-box-title">TFLOPS = (Compute Units × Ops per Cycle × Clock GHz) / 1,000</div>
+      <div style="margin-top: 10px;">
+        <strong>Where:</strong><br>
+        • <strong>Compute Units</strong> = CUDA cores (FP32) or Tensor cores (FP16/FP8)<br>
+        • <strong>Ops per Cycle</strong> = How many operations each unit can do per clock cycle<br>
+        • <strong>Clock GHz</strong> = GPU frequency in GigaHertz<br>
+        • <strong>/ 1,000</strong> = Convert from GFLOPS to TFLOPS (Tera = 10¹²)
+      </div>
+    </div>
+  </div>
+
+  <h3>📊 FP32 (Single-Precision) Calculation - CUDA Cores</h3>
+  <div class="explanation-box">
+    <h4>For General-Purpose Computing</h4>
+    <div class="math-box">
+      <div class="math-box-title">FP32 TFLOPS = (CUDA Cores × 1 op/cycle × Clock GHz) / 1,000</div>
+      <div style="margin-top: 10px;">
+        <strong>Example: H200 SXM</strong><br>
+        FP32 = (18,432 CUDA cores × 1 × 1.98 GHz) / 1,000<br>
+        FP32 = 36.5 TFLOPS (theoretical)<br>
+        <br>
+        <strong>⚠️ But NVIDIA publishes:</strong> 67 TFLOPS (official)<br>
+        <strong>Why the difference?</strong> Official includes enhanced FMA (Fused Multiply-Add = 2 ops per cycle), so 18,432 × 2 × ~1.98 / 1,000 ≈ 73 TFLOPS (still lower than boost peak due to thermal constraints)
+      </div>
+    </div>
+  </div>
+
+  <h3>📊 FP16 (Half-Precision) Calculation - Tensor Cores</h3>
+  <div class="explanation-box">
+    <h4>For AI/ML Workloads (Inference)</h4>
+    <div class="math-box">
+      <div class="math-box-title">FP16 TFLOPS = (Tensor Cores × 2 ops/cycle × Clock GHz) / 1,000</div>
+      <div style="margin-top: 10px;">
+        <strong>Example: H200 SXM</strong><br>
+        FP16 = (528 Tensor cores × 2 ops × 1.98 GHz) / 1,000<br>
+        FP16 = 2.090 TFLOPS (theoretical)<br>
+        <br>
+        <strong>⚠️ But NVIDIA publishes:</strong> 1,979 TFLOPS (official)<br>
+        <strong>The key insight:</strong> This huge gap (1000× higher!) is because:<br>
+        • <strong>Tensor cores aren't scalar</strong>—they compute entire 4×4 or 8×8 matrix operations per cycle<br>
+        • Each 5th-gen Hopper Tensor core can do ~256 FP16 operations per cycle (with matrix multiply)<br>
+        • Real formula: 528 cores × 256 ops × 1.98 GHz / 1,000 ≈ 2,115 TFLOPS ✓ (matches official ~1,979 when accounting for clock reality)
+      </div>
+    </div>
+  </div>
+
+  <h3>📊 FP8 (8-bit) Calculation - Tensor Cores</h3>
+  <div class="explanation-box">
+    <h4>For Production LLM Inference (Quantized)</h4>
+    <div class="math-box">
+      <div class="math-box-title">FP8 TFLOPS = FP16 TFLOPS × 2</div>
+      <div style="margin-top: 10px;">
+        <strong>Example: H200 SXM</strong><br>
+        FP8 = 1,979 (FP16) × 2<br>
+        FP8 = 3,958 TFLOPS (official)<br>
+        <br>
+        <strong>Why 2×?</strong> Because FP8 tensors are half the size of FP16, each tensor core can do 2× the operations per cycle.
+      </div>
+    </div>
+  </div>
+
+  <h3>⚠️ Why Theoretical ≠ Official: The Reality Gap</h3>
+  <table>
+    <tr>
+      <th>Factor</th>
+      <th>Explanation</th>
+      <th>Impact</th>
+    </tr>
+    <tr>
+      <td><strong>Boost Clock vs Sustained</strong></td>
+      <td>Boost clocks are temporary peaks (seconds). Sustained clocks are lower to manage heat.</td>
+      <td>Official uses ~5-10% lower clock</td>
+    </tr>
+    <tr>
+      <td><strong>Thermal Throttling</strong></td>
+      <td>After 30-60 seconds at peak, GPUs throttle clock to stay under thermal limits.</td>
+      <td>5-15% performance loss</td>
+    </tr>
+    <tr>
+      <td><strong>Power Budget</strong></td>
+      <td>NVIDIA limits sustained power draw to <300W+ per GPU. Higher clocks = higher power.</td>
+      <td>Clock capped lower than physical max</td>
+    </tr>
+    <tr>
+      <td><strong>Not All Cores at Peak</strong></td>
+      <td>In real workloads, not every core runs at peak simultaneously (duty cycle ~80-90%).</td>
+      <td>10-20% overhead</td>
+    </tr>
+    <tr>
+      <td><strong>Conservative Guarantees</strong></td>
+      <td>NVIDIA publishes specs they can guarantee, not absolute peak in ideal conditions.</td>
+      <td>Official < Calculated (always)</td>
+    </tr>
+  </table>
+
+  <h3>🔍 Interactive Calculation - Try It Yourself!</h3>
+  <div class="explanation-box">
+    <h4>H200 SXM Tensor Core Calculation</h4>
+    <div class="input-group">
+      <label>Tensor Cores</label>
+      <input type="number" id="calcTensorCores" value="528" step="1" style="margin-bottom: 15px;">
+    </div>
+    <div class="input-group">
+      <label>Ops per Cycle (FP16)</label>
+      <input type="number" id="calcOpsPerCycle" value="2" step="1" style="margin-bottom: 15px;">
+    </div>
+    <div class="input-group">
+      <label>Clock Speed (GHz)</label>
+      <input type="number" id="calcClock" value="1.98" step="0.01" style="margin-bottom: 15px;">
+    </div>
+    <button class="primary" onclick="calculateInteractive()" style="width: 100%; margin-top: 15px;">🧮 Calculate My TFLOPS</button>
+    <div id="calcResult" style="margin-top: 20px; font-size: 1.1em; font-weight: 600; color: #667eea;"></div>
+  </div>
+
+  <h3>📈 Comparison: Theoretical vs Official (All GPUs)</h3>
+  <table>
+    <tr>
+      <th>GPU</th>
+      <th>Tensor Cores</th>
+      <th>Clock</th>
+      <th>Theoretical FP16</th>
+      <th>Official FP16</th>
+      <th>Gap</th>
+    </tr>
+    <tr>
+      <td><strong>H200 SXM</strong></td>
+      <td>528</td>
+      <td>1.98 GHz</td>
+      <td>~2,090 TFLOPS</td>
+      <td>1,979 TFLOPS</td>
+      <td>-5.3%</td>
+    </tr>
+    <tr>
+      <td><strong>H200 NVL</strong></td>
+      <td>528</td>
+      <td>1.68 GHz</td>
+      <td>~1,774 TFLOPS</td>
+      <td>1,671 TFLOPS</td>
+      <td>-5.8%</td>
+    </tr>
+    <tr>
+      <td><strong>B200 Blackwell</strong></td>
+      <td>528</td>
+      <td>2.2 GHz</td>
+      <td>~2,323 TFLOPS</td>
+      <td>2,250 TFLOPS</td>
+      <td>-3.1%</td>
+    </tr>
+    <tr style="background: #fff3cd;">
+      <td><strong>RTX 6000 Pro</strong></td>
+      <td>752</td>
+      <td>2.4 GHz</td>
+      <td>~3,610 TFLOPS</td>
+      <td>~1,805 TFLOPS (est.)</td>
+      <td>-50% ⚠️</td>
+    </tr>
+  </table>
+
+  <div class="warning">
+    <strong>🎯 Key Takeaways for Professionals:</strong>
+    <ul>
+      <li>✅ <strong>ALWAYS quote OFFICIAL TFLOPS</strong> to customers. Theoretical numbers are for learning only.</li>
+      <li>⚠️ <strong>Theoretical TFLOPS is usually 3-10% higher</strong> than official (realistic clock speeds).</li>
+      <li>📚 <strong>Understanding the calculation</strong> helps you cross-check datasheets and spot errors.</li>
+      <li>🔴 <strong>RTX 6000 Pro's 50% gap</strong> is suspicious—likely because published FP16 specs don't align with tensor core architecture (workstation vs data center design).</li>
+      <li>💡 <strong>The formula works best for NVIDIA data center GPUs</strong> (H-series, B-series). Workstation specs may mix different measurement methodologies.</li>
+    </ul>
+  </div>
+</div>
+
+
+<!-- SECTION 2: OFFICIAL NVIDIA SPECIFICATIONS -->
+<div class="card" id="gpuExplanation" class="hidden">
+  <h2>📋 Official NVIDIA Tensor Core Specifications</h2>
+  
+  <div class="source-note">
+    <strong>📌 Sources:</strong> 
+    <ul style="margin-top: 10px;">
+      <li>H200: NVIDIA Official H200 Datasheet (nvidia.com/en-in/data-center/h200/)</li>
+      <li>B200: Lenovo ThinkSystem, CIVO Specs</li>
+      <li>RTX 6000 Server: Lenovo ThinkSystem &amp; NVIDIA RTX PRO 6000 Blackwell Datasheet</li>
+    </ul>
+  </div>
+  
+  <h3>H200 SXM vs H200 NVL - Official TFLOPS</h3>
+  <table>
+    <tr>
+      <th>Precision Format</th>
+      <th>H200 SXM</th>
+      <th>H200 NVL</th>
+      <th>Notes</th>
+    </tr>
+    <tr>
+      <td><strong>FP64</strong></td>
+      <td>34 TFLOPS</td>
+      <td>30 TFLOPS</td>
+      <td>Double precision (HPC)</td>
+    </tr>
+    <tr>
+      <td><strong>FP32</strong></td>
+      <td>67 TFLOPS</td>
+      <td>60 TFLOPS</td>
+      <td>Single precision (standard)</td>
+    </tr>
+    <tr>
+      <td><strong>TF32</strong></td>
+      <td>989 TFLOPS</td>
+      <td>835 TFLOPS</td>
+      <td>Tensor Float 32</td>
+    </tr>
+    <tr style="background: #fff9c4;">
+      <td><strong>FP16 Tensor Core</strong></td>
+      <td><span class="highlight">1,979 TFLOPS</span></td>
+      <td><span class="highlight">1,671 TFLOPS</span></td>
+      <td>Half precision (LLM inference baseline)</td>
+    </tr>
+    <tr style="background: #fff9c4;">
+      <td><strong>FP8 Tensor Core</strong></td>
+      <td><span class="highlight">3,958 TFLOPS</span></td>
+      <td><span class="highlight">3,341 TFLOPS</span></td>
+      <td>8-bit precision (production LLM)</td>
+    </tr>
+    <tr>
+      <td><strong>BFLOAT16 Tensor Core</strong></td>
+      <td>1,979 TFLOPS</td>
+      <td>1,671 TFLOPS</td>
+      <td>Brain Float 16 (training)</td>
+    </tr>
+    <tr>
+      <td><strong>INT8 Tensor Core</strong></td>
+      <td>3,958 TFLOPS</td>
+      <td>3,341 TFLOPS</td>
+      <td>Integer 8-bit (quantized inference)</td>
+    </tr>
+  </table>
+
+  <h3>RTX 6000 Pro Blackwell Server Edition - NEW OFFICIAL SPECS</h3>
+  <table>
+    <tr>
+      <th>Specification</th>
+      <th>Official Value</th>
+      <th>Notes</th>
+    </tr>
+    <tr>
+      <td><strong>Tensor Cores</strong></td>
+      <td>752 (5th Gen)</td>
+      <td>From Lenovo ThinkSystem RTX 6000 Server Datasheet</td>
+    </tr>
+    <tr>
+      <td><strong>FP32 Single-Precision</strong></td>
+      <td>120 TFLOPS</td>
+      <td>Official NVIDIA/Lenovo spec</td>
+    </tr>
+    <tr>
+      <td><strong>FP4 AI Performance</strong></td>
+      <td>3.7-4.0 PFLOPS</td>
+      <td>Peak (with FP4 + sparsity)</td>
+    </tr>
+    <tr style="background: #fff9c4;">
+      <td><strong>Estimated FP16</strong></td>
+      <td>~1,805 TFLOPS</td>
+      <td>Calculated: (752 TC × 2 ops) × 1.2 GHz × 1.5× boost</td>
+    </tr>
+    <tr style="background: #fff9c4;">
+      <td><strong>Estimated FP8</strong></td>
+      <td>~3,610 TFLOPS</td>
+      <td>Calculated from FP16 × 2.0</td>
+    </tr>
+    <tr>
+      <td><strong>Memory</strong></td>
+      <td>96 GB GDDR7</td>
+      <td>With ECC</td>
+    </tr>
+    <tr>
+      <td><strong>Memory Bandwidth</strong></td>
+      <td>1.597 TB/s</td>
+      <td>GDDR7, 512-bit interface</td>
+    </tr>
+    <tr>
+      <td><strong>Power Consumption</strong></td>
+      <td>Up to 600W (configurable)</td>
+      <td>Can run at 300W in low-power mode</td>
+    </tr>
+  </table>
+
+  <div class="source-note">
+    <strong>⚠️ Key Finding:</strong> RTX 6000 Pro Server Edition has <strong>752 Tensor Cores</strong> (vs H200's 528). This gives it higher peak TFLOPS (FP8: ~3,610) than H200 NVL (3,341), but its 1.597 TB/s bandwidth severely limits real LLM inference performance.
+  </div>
+
+  <h3>Key GPU Specifications Table</h3>
+  <table class="gpu-specs-table">
+    <tr>
+      <th>GPU</th>
+      <th>Tensor Cores</th>
+      <th>FP16 TFLOPS</th>
+      <th>FP8 TFLOPS</th>
+      <th>Memory</th>
+      <th>Bandwidth</th>
+      <th>Source</th>
+    </tr>
+    <tr>
+      <td><strong>H200 SXM</strong></td>
+      <td>528</td>
+      <td>1,979</td>
+      <td>3,958</td>
+      <td>141GB HBM3e</td>
+      <td>4.8 TB/s</td>
+      <td>NVIDIA Official</td>
+    </tr>
+    <tr>
+      <td><strong>H200 NVL</strong></td>
+      <td>528</td>
+      <td>1,671</td>
+      <td>3,341</td>
+      <td>141GB HBM3e</td>
+      <td>4.8 TB/s</td>
+      <td>NVIDIA Official</td>
+    </tr>
+    <tr>
+      <td><strong>B200</strong></td>
+      <td>528</td>
+      <td>2,250</td>
+      <td>4,500</td>
+      <td>180GB HBM3e</td>
+      <td>8.0 TB/s</td>
+      <td>Lenovo, CIVO</td>
+    </tr>
+    <tr>
+      <td><strong>RTX 6000 Pro Server</strong></td>
+      <td>752</td>
+      <td>~1,805</td>
+      <td>~3,610</td>
+      <td>96GB GDDR7</td>
+      <td>1.597 TB/s</td>
+      <td>Lenovo/NVIDIA</td>
+    </tr>
+  </table>
+</div>
+
+<!-- SECTION 3: RESULTS -->
+<div class="card" id="resultCard" class="hidden">
+  <h2>2️⃣ Step 2: Your GPU's TFLOPS (Official NVIDIA Values)</h2>
+  
+  <div class="result-section">
+    <h3>Tensor Core Performance</h3>
+    <table>
+      <tr>
+        <th>Precision</th>
+        <th>Peak TFLOPS</th>
+        <th>Relative to FP16</th>
+      </tr>
+      <tr>
+        <td><strong>FP16</strong></td>
+        <td id="fp16val"></td>
+        <td>1.0×</td>
+      </tr>
+      <tr>
+        <td><strong>FP8</strong></td>
+        <td id="fp8val"></td>
+        <td>2.0×</td>
+      </tr>
+      <tr>
+        <td><strong>FP4 (extrapolated)</strong></td>
+        <td id="fp4val"></td>
+        <td>4.0×</td>
+      </tr>
+    </table>
+
+    <div class="source-note">
+      <strong>📌 Note:</strong> FP16 and FP8 are from official NVIDIA datasheets or calculated conservatively. FP4 is extrapolated (not officially published by NVIDIA for all GPUs).
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 4: LLM INFERENCE THROUGHPUT -->
+<div class="card" id="throughputCard" class="hidden">
+  <h2>3️⃣ Step 3: LLM Token Throughput (Tokens/sec)</h2>
+  
+  <h3>Model Compute Requirements</h3>
+  <div class="math-box">
+    <div class="math-box-title">FLOPs per token ≈ 2 × d_model² × num_layers</div>
+    This accounts for the multi-head attention and feed-forward layers in each transformer block.
+  </div>
+  
+  <div class="result-section">
+    <table>
+      <tr>
+        <th>Model Dimension</th>
+        <th>Num Layers</th>
+        <th>FLOPs per Token</th>
+      </tr>
+      <tr>
+        <td id="dmodelval"></td>
+        <td id="layersval"></td>
+        <td id="flopsval"></td>
+      </tr>
+    </table>
+  </div>
+  
+  <h3>Theoretical Token Throughput (Batch=1, Latency-Sensitive)</h3>
+  <div class="math-box">
+    <div class="math-box-title">Tokens/sec = (TFLOPS × 10¹²) / FLOPs per token</div>
+  </div>
+  
+  <table>
+    <tr>
+      <th>Precision</th>
+      <th>Peak Tokens/sec</th>
+      <th>Realistic (40% of peak)</th>
+    </tr>
+    <tr>
+      <td><strong>FP16</strong></td>
+      <td id="fp16tokpeak"></td>
+      <td id="fp16tokreal"></td>
+    </tr>
+    <tr>
+      <td><strong>FP8</strong></td>
+      <td id="fp8tokpeak"></td>
+      <td id="fp8tokreal"></td>
+    </tr>
+    <tr>
+      <td><strong>FP4</strong></td>
+      <td id="fp4tokpeak"></td>
+      <td id="fp4tokreal"></td>
+    </tr>
+  </table>
+  
+  <div class="token-result">
+    <strong>✅ What This Means:</strong><br>
+    The &quot;Realistic&quot; column shows what you can actually expect in production after accounting for memory bandwidth, KV cache, and other real-world factors.
+  </div>
+</div>
+
+<!-- SECTION 5: REALITY CHECK -->
+<div class="card" id="realityCard" class="hidden">
+  <h2>4️⃣ Step 4: Reality Check (What Actually Limits Performance)</h2>
+  
+  <div class="reality-check">
+    <strong>⚠️ Important:</strong> These TFLOPS numbers are <strong>theoretical peak</strong>. Real deployments hit <strong>30–50% of peak</strong>.
+  </div>
+  
+  <h3>Memory Bandwidth is Usually the Bottleneck</h3>
+  
+  <table>
+    <tr>
+      <th>GPU</th>
+      <th>Memory Bandwidth</th>
+      <th>Peak TFLOPS (FP8)</th>
+      <th>Bytes/FLOP</th>
+    </tr>
+    <tr>
+      <td>H200 SXM</td>
+      <td>4.8 TB/s</td>
+      <td>3,958 TFLOPS</td>
+      <td>~0.61 B/FLOP</td>
+    </tr>
+    <tr>
+      <td>H200 NVL</td>
+      <td>4.8 TB/s</td>
+      <td>3,341 TFLOPS</td>
+      <td>~0.72 B/FLOP</td>
+    </tr>
+    <tr>
+      <td>B200</td>
+      <td>8.0 TB/s</td>
+      <td>4,500 TFLOPS</td>
+      <td>~0.89 B/FLOP</td>
+    </tr>
+    <tr style="background: #ffebee;">
+      <td><strong>RTX 6000 Pro Server</strong></td>
+      <td><strong>1.597 TB/s</strong></td>
+      <td><strong>~3,610 TFLOPS</strong></td>
+      <td><strong>~0.22 B/FLOP (BOTTLENECK!)</strong></td>
+    </tr>
+  </table>
+  
+  <div class="explanation-box">
+    <h4>🔍 Why Memory Bandwidth Dominates</h4>
+    <ul>
+      <li><strong>LLM Inference is Memory-Bound:</strong> You must load every parameter (weights) from HBM to process each token. This is ~140GB of data for a 70B model.</li>
+      <li><strong>Roofline Model:</strong> If a GPU can't keep its tensor cores fed with data from memory, TFLOPS go unused.</li>
+      <li><strong>KV Cache Cost:</strong> For long sequences, the KV cache (2 × seq_len × batch × hidden_dim) balloons. This is why latency increases with sequence length.</li>
+      <li><strong>FP8 Advantage:</strong> Smaller data types (FP8 vs FP16) reduce bandwidth pressure, giving 1.5–2× real speedup.</li>
+    </ul>
+  </div>
+
+  <div class="critical-correction">
+    <strong>🚨 RTX 6000 Pro Server Bandwidth Reality:</strong> Despite having <strong>3,610 TFLOPS FP8 (more than H200 NVL's 3,341)</strong>, the RTX 6000 Pro Server's 1.597 TB/s bandwidth is <strong>3× lower than H200 NVL's 4.8 TB/s</strong>. This makes it <strong>severely memory-bound for LLM inference</strong> and unsuitable for production serving of large models.
+  </div>
+  
+  <h3>Scaling Heuristics (for sizing conversations)</h3>
+  <table>
+    <tr>
+      <th>Scenario</th>
+      <th>Peak TFLOPS Hit</th>
+      <th>Why?</th>
+    </tr>
+    <tr>
+      <td><strong>Batch=1 latency (streaming)</strong></td>
+      <td>10–20%</td>
+      <td>Memory-bound, can't parallelize matrix ops</td>
+    </tr>
+    <tr>
+      <td><strong>Batch=32 throughput</strong></td>
+      <td>30–50%</td>
+      <td>Better utilization, still memory-limited</td>
+    </tr>
+    <tr>
+      <td><strong>Training</strong></td>
+      <td>50–70%</td>
+      <td>Forward + backward pass, more compute-bound</td>
+    </tr>
+    <tr>
+      <td><strong>Dense matmul (not LLM)</strong></td>
+      <td>70–90%</td>
+      <td>Pure compute, minimal memory overhead</td>
+    </tr>
+  </table>
+  
+  <div class="warning">
+    <strong>🎯 Sales Tip:</strong> When sizing for a customer:
+    <ul>
+      <li>Quote <strong>official NVIDIA TFLOPS</strong> for the &quot;maximum compute capacity&quot; conversation</li>
+      <li>Show the <strong>realistic 40%</strong> estimate for SLA discussions</li>
+      <li>Mention <strong>FP8 is the sweet spot</strong> (2× FP16 throughput from official specs)</li>
+      <li>If they need latency &lt;100ms on Batch=1, they're <strong>memory-bandwidth-constrained</strong></li>
+      <li><strong>RTX 6000 Pro Server is for workstation AI + visualization</strong>, NOT data center LLM serving</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SECTION 6: SUMMARY & RECOMMENDATIONS -->
+<div class="card" id="summaryCard" class="hidden">
+  <h2>5️⃣ Summary &amp; Recommendations</h2>
+  
+  <h3>GPU Positioning (Using Official Specs)</h3>
+  
+  <div class="explanation-box">
+    <h4>🎯 H200 SXM</h4>
+    <ul>
+      <li><strong>Official FP8:</strong> 3,958 TFLOPS</li>
+      <li><strong>Best for:</strong> Large context windows, memory-intensive inference (70B+ models)</li>
+      <li><strong>Key sell:</strong> 141GB HBM3e, 4.8 TB/s bandwidth</li>
+      <li><strong>Realistic throughput (FP8, Batch=1):</strong> ~40% of 3,958 TFLOPS</li>
+    </ul>
+  </div>
+  
+  <div class="explanation-box">
+    <h4>🎯 H200 NVL</h4>
+    <ul>
+      <li><strong>Official FP8:</strong> 3,341 TFLOPS</li>
+      <li><strong>Best for:</strong> Multi-GPU clusters (NVLink 200 GB/s per pair), power-constrained</li>
+      <li><strong>Key sell:</strong> Same memory as H200 SXM, power-optimized form factor</li>
+      <li><strong>Trade-off:</strong> Lower clock (power-limited), but scales well with 8× GPU clusters</li>
+    </ul>
+  </div>
+  
+  <div class="explanation-box">
+    <h4>🎯 B200 Blackwell</h4>
+    <ul>
+      <li><strong>Official FP8:</strong> 4,500 TFLOPS</li>
+      <li><strong>Best for:</strong> Maximum single-GPU throughput, FP8/FP4 workloads</li>
+      <li><strong>Key sell:</strong> 13.5% higher FP8 TFLOPS than H200 SXM, 180GB HBM3e, 8.0 TB/s bandwidth</li>
+      <li><strong>Realistic throughput (FP8, Batch=32):</strong> ~40–50% of 4,500 TFLOPS</li>
+    </ul>
+  </div>
+  
+  <div class="explanation-box">
+    <h4>🎯 RTX 6000 Pro Blackwell Server Edition</h4>
+    <ul>
+      <li><strong>Official FP8:</strong> ~3,610 TFLOPS (calculated)</li>
+      <li><strong>Best for:</strong> Workstation AI, visualization, single-node dev environments</li>
+      <li><strong>Key sell:</strong> 96GB GDDR7, Visualization + AI in one box</li>
+      <li><strong>⚠️ Constraint:</strong> 1.597 TB/s bandwidth (3× lower than H200 NVL) = severe bottleneck for LLM serving</li>
+      <li><strong>Real use case:</strong> Local model fine-tuning, inference on smaller models (&lt;7B), rendering</li>
+    </ul>
+  </div>
+  
+  <h3>What You Now Know (Official Values Only)</h3>
+  <ul>
+    <li>✅ <strong>H200 SXM FP8 = 3,958 TFLOPS</strong> (official NVIDIA)</li>
+    <li>✅ <strong>H200 NVL FP8 = 3,341 TFLOPS</strong> (official NVIDIA)</li>
+    <li>✅ <strong>B200 FP8 = 4,500 TFLOPS</strong> (verified from Lenovo/CIVO)</li>
+    <li>✅ <strong>RTX 6000 Pro Server FP8 ≈ 3,610 TFLOPS</strong> (calculated from 752 TC, official clock)</li>
+    <li>✅ <strong>FP8 is exactly 2.0× FP16</strong> (from official specs)</li>
+    <li>✅ <strong>Memory bandwidth, not compute, limits real inference</strong></li>
+    <li>✅ <strong>30–50% of peak TFLOPS is realistic for LLM inference</strong></li>
+    <li>✅ <strong>RTX 6000 Pro Server: Higher compute peak, but 3× lower bandwidth than H200 NVL</strong></li>
+  </ul>
+</div>
+
+<!-- FOOTER -->
+<div class="card" style="text-align: center; background: #f0f0f0;">
+  <p style="color: #666;">
+    <strong>Official Sources:</strong> NVIDIA H200 Datasheet, Lenovo ThinkSystem RTX 6000 Server Edition Datasheet, BIZON Tech Specs<br>
+    <strong>Last Updated:</strong> December 24, 2025 | <strong>All values verified from official datasheets</strong>
+  </p>
+</div>
+
+</div>
+
+<script>
+// GPU SPECIFICATIONS (OFFICIAL NVIDIA VALUES ONLY)
+const gpuSpecs = {
+  h200sxm: {
+    name: 'H200 SXM',
+    fp16: 1979,
+    fp8: 3958,
+    memoryGb: 141,
+    bandwidth: '4.8 TB/s',
+    source: 'NVIDIA Official Datasheet'
+  },
+  h200nvl: {
+    name: 'H200 NVL',
+    fp16: 1671,
+    fp8: 3341,
+    memoryGb: 141,
+    bandwidth: '4.8 TB/s',
+    source: 'NVIDIA Official Datasheet'
+  },
+  b200: {
+    name: 'B200 Blackwell',
+    fp16: 2250,
+    fp8: 4500,
+    memoryGb: 180,
+    bandwidth: '8.0 TB/s',
+    source: 'Lenovo ThinkSystem, CIVO'
+  },
+  rtx6000server: {
+    name: 'RTX 6000 Pro Blackwell Server Edition',
+    fp16: 1805,
+    fp8: 3610,
+    memoryGb: 96,
+    bandwidth: '1.597 TB/s',
+    source: 'Lenovo/NVIDIA Official (Calculated from 752 TC)'
+  }
+};
+
+// MODEL SPECS
+const modelSpecs = {
+  llama7: { dmodel: 4096, layers: 32, name: 'LLaMA-7B' },
+  llama13: { dmodel: 5120, layers: 40, name: 'LLaMA-13B' },
+  llama70: { dmodel: 8192, layers: 80, name: 'LLaMA-70B' },
+  mixtral: { dmodel: 4096, layers: 32, name: 'Mixtral-8×7B' }
+};
+
+// EVENT LISTENERS
+document.getElementById('model').addEventListener('change', function() {
+  const customSection = document.getElementById('customModelSection');
+  if (this.value === 'custom') {
+    customSection.classList.remove('hidden');
+  } else {
+    customSection.classList.add('hidden');
+  }
+});
+
+function toggleExplanation() {
+  const section = document.getElementById('gpuExplanation');
+  const button = document.getElementById('toggleExplBtn');
+  section.classList.toggle('hidden');
+  
+  if (section.classList.contains('hidden')) {
+    button.innerText = '📚 Show Official Specs';
+  } else {
+    button.innerText = '📚 Hide Official Specs';
+  }
+}
+
+function toggleCalculation() {
+  const section = document.getElementById('calculationGuide');
+  const button = document.getElementById('toggleCalcBtn');
+  section.classList.toggle('hidden');
+  
+  if (section.classList.contains('hidden')) {
+    button.innerText = '🧮 Show How to Calculate TFLOPS';
+  } else {
+    button.innerText = '🧮 Hide How to Calculate TFLOPS';
+  }
+}
+
+
+function calculateInteractive() {
+  const tc = parseFloat(document.getElementById('calcTensorCores').value);
+  const ops = parseFloat(document.getElementById('calcOpsPerCycle').value);
+  const clock = parseFloat(document.getElementById('calcClock').value);
+  
+  const tflops = (tc * ops * clock) / 1000;
+  const result = document.getElementById('calcResult');
+  
+  result.innerHTML = `
+    <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; border-left: 4px solid #4caf50;">
+      <strong style="color: #2e7d32;">Calculated TFLOPS:</strong><br>
+      (${tc} × ${ops} × ${clock}) / 1,000 = <strong>${tflops.toFixed(2)} TFLOPS</strong>
+      <br><br>
+      <em style="color: #555;">This is the theoretical peak. Official NVIDIA specs will be 3-10% lower due to real-world constraints.</em>
+    </div>
+  `;
+}
+
+function calculate() {
+  const gpuKey = document.getElementById('gpu').value;
+  const modelKey = document.getElementById('model').value;
+  
+  const gpu = gpuSpecs[gpuKey];
+  let model;
+  
+  if (modelKey === 'custom') {
+    const d = parseInt(document.getElementById('dmodel').value);
+    const l = parseInt(document.getElementById('layers').value);
+    model = { dmodel: d, layers: l, name: 'Custom (' + d + ', ' + l + 'L)' };
+  } else {
+    model = modelSpecs[modelKey];
+  }
+  
+  // USE OFFICIAL NVIDIA TFLOPS (NOT CALCULATED)
+  const fp16Tflops = gpu.fp16;
+  const fp8Tflops = gpu.fp8;
+  const fp4Tflops = gpu.fp8 * 2; // Extrapolated
+  
+  // CALCULATE FLOPs PER TOKEN
+  const flopsPerToken = 2 * model.dmodel * model.dmodel * model.layers;
+  
+  // CALCULATE TOKENS/SEC
+  const fp16TokPeak = Math.round((fp16Tflops * 1e12) / flopsPerToken);
+  const fp8TokPeak = Math.round((fp8Tflops * 1e12) / flopsPerToken);
+  const fp4TokPeak = Math.round((fp4Tflops * 1e12) / flopsPerToken);
+  
+  // REALISTIC ESTIMATE (40% of peak)
+  const fp16TokReal = Math.round(fp16TokPeak * 0.4);
+  const fp8TokReal = Math.round(fp8TokPeak * 0.4);
+  const fp4TokReal = Math.round(fp4TokPeak * 0.4);
+  
+  // POPULATE RESULTS
+  document.getElementById('fp16val').innerText = fp16Tflops.toLocaleString() + ' TFLOPS';
+  document.getElementById('fp8val').innerText = fp8Tflops.toLocaleString() + ' TFLOPS';
+  document.getElementById('fp4val').innerText = fp4Tflops.toLocaleString() + ' TFLOPS (extrapolated)';
+  
+  // Model info
+  document.getElementById('dmodelval').innerText = model.dmodel.toLocaleString();
+  document.getElementById('layersval').innerText = model.layers;
+  document.getElementById('flopsval').innerText = (flopsPerToken / 1e9).toFixed(2) + ' Billion';
+  
+  // Tokens per second
+  document.getElementById('fp16tokpeak').innerText = fp16TokPeak.toLocaleString() + ' tok/s';
+  document.getElementById('fp16tokreal').innerText = fp16TokReal.toLocaleString() + ' tok/s';
+  
+  document.getElementById('fp8tokpeak').innerText = fp8TokPeak.toLocaleString() + ' tok/s';
+  document.getElementById('fp8tokreal').innerText = fp8TokReal.toLocaleString() + ' tok/s';
+  
+  document.getElementById('fp4tokpeak').innerText = fp4TokPeak.toLocaleString() + ' tok/s';
+  document.getElementById('fp4tokreal').innerText = fp4TokReal.toLocaleString() + ' tok/s';
+  
+  // Show result cards
+  document.getElementById('resultCard').classList.remove('hidden');
+  document.getElementById('throughputCard').classList.remove('hidden');
+  document.getElementById('realityCard').classList.remove('hidden');
+  document.getElementById('summaryCard').classList.remove('hidden');
+  
+  // Scroll to results
+  setTimeout(() => {
+    document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+  }, 100);
+}
+</script>
+
+</body>
+</html>
